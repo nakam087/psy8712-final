@@ -211,11 +211,6 @@ holdout_m4 <- cor(
 stopCluster(local_cluster) #stopping parallelization
 registerDoSEQ()
 
-#This is a comparison of the performances of the models on the training data 
-summary(resamples(list(model1, model2, model3, model4)), metric="Rsquared")
-#This is the visualized comparison of each model as a dotplot
-dotplot(resamples(list(model1, model2, model3, model4)), metric="Rsquared")
-
 # Publication
 function_proj <- function (x) { #creating a function where it is rounded to 2 digits and the leading 0 digit is removed in the decimal. This is to compare the values cleanly to one another in a table
   x <- formatC(x, format="f", digits=2)
