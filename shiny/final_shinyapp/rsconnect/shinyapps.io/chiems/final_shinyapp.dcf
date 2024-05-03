@@ -1,0 +1,12 @@
+name: final_shinyapp
+title: final_shinyapp
+username: chiems
+account: chiems
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11929668
+bundleId: 8573283
+url: https://chiems.shinyapps.io/final_shinyapp/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
