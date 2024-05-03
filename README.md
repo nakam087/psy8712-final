@@ -11,6 +11,10 @@ This contains another folder called final_shinyapp, where the app.R file lives. 
 This contains figures 1-4, which are visualizations of the various data + research questions explored in PNG format.
 ### docs
 This contains the codebook used for GSS 2018 data and the project writeup
+### runtime.txt
+details the version of R used for binder
+### install.R
+details the packages for binder
 
 ## Links
 ### Shiny application link
