@@ -1,3 +1,4 @@
+#important note that this R file should be run after the final_proj.R file, as the import_tbl is an output of the data cleaning portion
 library(shiny)
 library(ggplot2)
 library(dplyr)
@@ -52,18 +53,18 @@ server <- function(input, output) {
       
       # Apply filters successively
       filtered_tbl <- filtered_tbl %>% # i know i am not supposed to do this, but for some reason, my code was failing without it
-        filter(if (input$sex_select != "All") sex == input$sex_select else TRUE) %>% #if an option other than nothing is selected, the tbl will be filtered to male or female, depending. This is also true for the following options, as the categories are already made into the same factors that I have in the ui section
+        filter(if (input$sex_select != "All") sex == input$sex_select else TRUE) %>% #if an option other than nothing is selected, the tbl will be filtered to male or female, depending. This is also true for the following options, as the categories are already made into the same factors that I have in the ui section. This applies to the following categoires as well
         filter(if (input$happy_select != "All") happiness == input$happy_select else TRUE) %>%
         filter(if (input$race_select != "All") race == input$race_select else TRUE) %>%
         filter(if (input$trust_select != "All") trust == input$trust_select else TRUE) %>%
         filter(if (input$fair_select != "All") fairness == input$fair_select else TRUE) %>%
         filter(if (input$life_select != "All") life == input$life_select else TRUE) 
        
-        # draw the histogram
-        ggplot(filtered_tbl,
+        # draw the histogram of income level
+        ggplot(filtered_tbl, #using ggplot for the control + to keep using the tidyverse function
                aes(x=INCOME)) +
-          geom_histogram(fill="green") +
-          labs(x="Income level 1-12",
+          geom_histogram(fill="green") + #setting color to green like money
+          labs(x="Income level 1-12", #labeling axis + creating a title
                title = "Family Income level from GSS 2018 data")
     })
 }

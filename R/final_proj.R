@@ -5,6 +5,7 @@ library(haven) #used to read-in data
 library(caret) #used for supervised machine learning algorithms 
 library(parallel) #had to parallelize data to speed up machine learning process
 library(doParallel)
+library(apaTables)
 
 # Data Import and Cleaning
 #reading in gss2018 data -- 2022 data was not working because of new added variables 
@@ -22,7 +23,7 @@ gss_tbl <- gss_import_tbl[, colSums(is.na(gss_import_tbl))<.75*nrow(gss_import_t
 gss_reduced_tbl <- gss_tbl %>%
   select(
     SEX,
-    AGE,
+    AGE, #didn't end up using age
     INCOME,# Family income
     FAIR, # Are people fair or try to take advantage
     TRUST,# Can people be trusted
@@ -45,17 +46,59 @@ gss_reduced_tbl  %>%
   saveRDS("../shiny/import.RDS")     
 
 # Visualization
+#Creating a table of summary statistics for income
+summary_table <- gss_tbl %>%
+  summarise( #used this so I could easily emplpoy multiple functions together
+    mean_income = mean(INCOME),
+    median_income = median(INCOME),
+    min_income = min(INCOME),
+    max_income = max(INCOME)
+  )
+print(summary_table)
+
 #creating a barplot of family income to display distribution of family income
-ggplot(gss_tbl, #using ggplot for the heightened control vs plot() base R
+(gss_tbl%>%
+  ggplot( #using ggplot for the heightened control vs plot() base R
        aes(x=INCOME)) + 
   geom_bar(fill="green")+ #green like money!!
   labs(x="Total family income level (1-12)", #making axis labels
        y="Frequency",
-       title="Total Family Income Level")
+       title="Total Family Income Level"))%>%
+  ggsave("../figs/fig1.png",.,height=3,width=4, dpi=600) #saving the histogram
+
+#R2: Are there significant differences in income level for different perceptions of fairness?
+(gss_reduced_tbl%>%
+    ggplot( #using ggplot for the heightened control vs plot() base R
+      aes(x=INCOME, fairness)) + 
+    geom_boxplot(fill="green")+ #green like money!!
+    labs(x="Total family income level (1-12)", #making axis labels
+         y="Fairness perception",
+         title="Total Family Income Level vs Fairness perception"))%>%
+  ggsave("../figs/fig2.png",.,height=4,width=6, dpi=600)
+
+#R3: Are there significant differences in income level for different happiness levels?
+(gss_reduced_tbl%>%
+    ggplot( #using ggplot for the heightened control vs plot() base R
+      aes(x=INCOME, happiness)) + 
+    geom_boxplot(fill="green")+ #green like money!!
+    labs(x="Total family income level (1-12)", #making axis labels
+         y="Happiness level",
+         title="Total Family Income Level vs Happiness level"))%>%
+  ggsave("../figs/fig3.png",.,height=4,width=6, dpi=600)
+
+#R4:Are there significant differences in income level for different races?
+(gss_reduced_tbl%>%
+    ggplot( #using ggplot for the heightened control vs plot() base R
+      aes(x=INCOME, race)) + 
+    geom_boxplot(fill="green")+ #green like money!!
+    labs(x="Total family income level (1-12)", #making axis labels
+         y="Race",
+         title="Total Family Income Level vs Race"))%>%
+  ggsave("../figs/fig4.png",.,height=4,width=6, dpi=600)
 
 # Analysis
 
-#R1: How well does income predict the variables in the GSS 2018 dataset?
+#R1: How effectively can the variables in the GSS 2018 dataset predict income?
 
 #creating holdout indeces; 25:75 partition
 holdout_indices <- createDataPartition(gss_tbl$INCOME,
@@ -199,19 +242,27 @@ table1_tbl <- tibble(
   )
 )
 table1_tbl
+#From this table, it seems that random forest was the best performing algorithm, as it was able to perform well on both training and novel data (a good balance of bias and variance). 
+# It seems that income can be predicted pretty well from the GSS 2018 data as approximately 97% of the variation in income the variable being predicted) can be explained by the independent variable(s) in the regression model.
+#The other models did not perform as well generally, as it seems some had difficulty performing on novel data (high bias), or just performed worse overall. 
 
-#R2: Are there significant differences in the way people of different income levels perceive fairness?
-#R2A: 
+#R2: Are there significant differences in income level for different perceptions of fairness?
 aov_1<-aov(INCOME~fairness, data=gss_reduced_tbl) #running an anova considering income and fairness (similar to what was graphed in the app)
 anova(aov_1) #printing anova result
+(table_2<-apa.aov.table(aov_1, table.number=2))#creating a table for visualization using apaTables, because this is the easiest tool with good formatting -- compared to creating a table myself
 TukeyHSD(aov_1) #printing Tukey's because results were significant (alpha = 0.05)
+# Yes, there are significant differences in income level for different perceptions of fairness (alpha=0.05). A Tukey’s HSD test indicates that the respondents who answered “Would try to be fair” vs those who answered“Would try to take advantage” significantly differed by around 0.658 in level. Having more money seems to relate to perceiving others as more fair.
 
 #R3: Are there significant differences in income level for different happiness levels?
 aov_2<-aov(INCOME~happiness, data=gss_reduced_tbl) #also similar to what is graphed in the app, income x happiness anova
 anova(aov_2)
+(table_3<-apa.aov.table(aov_2, table.number=3)) #printing result table
 TukeyHSD(aov_2) #printing Tukey's because results were significant
+#There are significant differences in income level for different happiness levels(alpha=0.05). A Tukey’s HSD test indicates that the respondents who answered “Not too happy” vs  those who answered “Would try to take advantage” significantly differed by around -1.45 in level. Additionally, respondents who answered “Not too happy” vs “Pretty happy’ differed around -1.25 in level. Maybe money does buy happiness!
 
 #R4:Are there significant differences in income level for different races?
 aov_3<-aov(INCOME~race, data=gss_reduced_tbl)#also similar to what is graphed in the app, income x race anova
 anova(aov_3)
+(table_4<-apa.aov.table(aov_3, table.number=4))#printing result table
 TukeyHSD(aov_3) #printing Tukey's because results were significant
+#There are significant differences in income level for different races (alpha=0.05). A Tukey’s HSD test indicates that the respondents who identified as Black differed from those who identified as white by -0.93. It should be noted that there were only 3 categories for race in this dataset: white, black, and other.
