@@ -3,6 +3,8 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #setting path for pr
 library(tidyverse) #used to  clean data + visualize
 library(haven) #used to read-in data
 library(caret) #used for supervised machine learning algorithms 
+library(parallel)
+library(doParallel)
 
 # Data Import and Cleaning
 #reading in gss2018 data -- 2022 data was not working because of new added variables 
@@ -85,6 +87,10 @@ holdout_m2 <- cor(
 #training random forests
 #chose random forests because it combines multiple decision trees + refines through pruning, pretty versatile + effective even with default hyperparameter tuning
 
+#kept having internal errors, so trying clustering
+local_cluster <- makeCluster(detectCores()-1) #making cluster, on my computer should be 7 cores
+registerDoParallel(local_cluster) #telling following MLs to be run in parallel if possible
+
 model3 <- train(
   INCOME ~ .,
   training_tbl,
@@ -97,6 +103,8 @@ model3 <- train(
                            indexOut = training_folds)
 )
 model3
+#This produced the following error, but there are probably missing values in the data, as I only accounted for 75% missingness. This was because I wanted to explore how well income could predict other variables.
+#In nominalTrainWorkflow(x = x, y = y, wts = weights, info = trainInfo,:There were missing values in resampled performance measures.
 #saving kfold cv results
 cv_m3 <- max(model3$results$Rsquared)
 #calculating holdout cv results
@@ -127,6 +135,8 @@ holdout_m4 <- cor(
   predict(model4, test_tbl, na.action = na.pass),
   test_tbl$INCOME
 )^2
+stopCluster(local_cluster) #stopping parallelization
+registerDoSEQ()
 
 #This is a comparison of the performances of the models on the training data 
 summary(resamples(list(model1, model2, model3, model4)), metric="Rsquared")
@@ -134,7 +144,7 @@ summary(resamples(list(model1, model2, model3, model4)), metric="Rsquared")
 dotplot(resamples(list(model1, model2, model3, model4)), metric="Rsquared")
 
 # Publication
-function_proj <- function (x) { #creating a function where it is rounded to 2 digits and the leading 0 digit is removed in the decimal
+function_proj <- function (x) { #creating a function where it is rounded to 2 digits and the leading 0 digit is removed in the decimal. This is to compare the values cleanly to one another in a table
   x <- formatC(x, format="f", digits=2)
   x <- str_remove(x, "^0")
   return(x)
@@ -158,3 +168,4 @@ table1_tbl <- tibble(
     function_proj(holdout_m4)
   )
 )
+table1_tbl
