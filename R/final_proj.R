@@ -1,32 +1,62 @@
 # Script Settings and Resources
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #setting path for project
-library(tidyverse) #used to  clean data + visualize
+library(tidyverse) #used to  clean data + visualize, more intuitive data-cleaning
 library(haven) #used to read-in data
 library(caret) #used for supervised machine learning algorithms 
-library(parallel)
+library(parallel) #had to parallelize data to speed up machine learning process
 library(doParallel)
 
 # Data Import and Cleaning
 #reading in gss2018 data -- 2022 data was not working because of new added variables 
 gss_import_tbl <- read_sav("../data/GSS2018.sav")%>% #used read_sav because it specializes in sav files. the sas file has some issues that appear in the ML process
-  filter(!is.na(INCOME)) %>% #inflation adjusted personal income; taking out missing values 
-  select(-RINCOME,-INCOM16,-INCOME16,-RINCOM16)#removing other income related variables that might be overly related to personal income
+  filter(!is.na(INCOME)) %>% #family income; taking out missing values 
+  select(-RINCOME,-INCOM16,-INCOME16,-RINCOM16)#removing other income related variables that might be overly related to family income
   
 #retaining variables with less than 75% missingness for prediction
 #because there are a large number of variables, I have only kept variables with less than 75% missingness to include the variables with the most relevant information and ensure a better fit with my model
 gss_tbl <- gss_import_tbl[, colSums(is.na(gss_import_tbl))<.75*nrow(gss_import_tbl)] %>%
   mutate(across(everything(), as.numeric))#making all variables numeric to use ML 
 
+#reduced tbl contains variables about how income realtes to perceptions of others, beliefs about life + race
+#made from the cleaned tbl to check if variables had enough information in them
+gss_reduced_tbl <- gss_tbl %>%
+  select(
+    SEX,
+    AGE,
+    INCOME,# Family income
+    FAIR, # Are people fair or try to take advantage
+    TRUST,# Can people be trusted
+    LIFE, #life exciting or dull?
+    HAPPY, # Happiness level
+    RACE #race of respondent (unfortunately just 2 options or other)
+  )%>%
+  mutate( #turning each variable into a factor per the codesheet
+    fairness = factor(FAIR, levels = c(1, 2, 3), labels = c("Would take advantage", "Would try to be fair", "It depends")),
+    trust=factor(TRUST, levels=c(1,2,3), labels = c("Most people can be trusted", "Can't be too careful", "Other/it depends")),
+    life=factor(LIFE, levels=c(1,2,3), labels=c("Exciting", "Routine", "Dull")),
+    happiness=factor(HAPPY, levels=c(1,2,3), labels=c("Very Happy", "Pretty happy", "Not too happy")),
+    race=factor(RACE, levels=c(1,2,3), labels=c("White", "Black", "Other")),
+    sex=factor(SEX, levels=c(1,2), labels=c("Male", "Female"))
+  )%>%
+  filter(!is.na(INCOME) & !is.na(fairness) & !is.na(trust) & !is.na(life) & !is.na(happiness) & !is.na(race) & !is.na(AGE) & !is.na(sex))
+
+#saving the tbl to the shiny folder for the app
+gss_reduced_tbl  %>%
+  saveRDS("../shiny/import.RDS")     
+
 # Visualization
 #creating a barplot of family income to display distribution of family income
-ggplot(gss_tbl,
+ggplot(gss_tbl, #using ggplot for the heightened control vs plot() base R
        aes(x=INCOME)) + 
   geom_bar(fill="green")+ #green like money!!
-  labs(x="Total family income", #making axis labels
+  labs(x="Total family income level (1-12)", #making axis labels
        y="Frequency",
-       title="Total Family Income from GSS 2018")
+       title="Total Family Income Level")
 
 # Analysis
+
+#R1: How well does income predict the variables in the GSS 2018 dataset?
+
 #creating holdout indeces; 25:75 partition
 holdout_indices <- createDataPartition(gss_tbl$INCOME,
                                        p = .25,
@@ -169,3 +199,19 @@ table1_tbl <- tibble(
   )
 )
 table1_tbl
+
+#R2: Are there significant differences in the way people of different income levels perceive fairness?
+#R2A: 
+aov_1<-aov(INCOME~fairness, data=gss_reduced_tbl) #running an anova considering income and fairness (similar to what was graphed in the app)
+anova(aov_1) #printing anova result
+TukeyHSD(aov_1) #printing Tukey's because results were significant (alpha = 0.05)
+
+#R3: Are there significant differences in income level for different happiness levels?
+aov_2<-aov(INCOME~happiness, data=gss_reduced_tbl) #also similar to what is graphed in the app, income x happiness anova
+anova(aov_2)
+TukeyHSD(aov_2) #printing Tukey's because results were significant
+
+#R4:Are there significant differences in income level for different races?
+aov_3<-aov(INCOME~race, data=gss_reduced_tbl)#also similar to what is graphed in the app, income x race anova
+anova(aov_3)
+TukeyHSD(aov_3) #printing Tukey's because results were significant
