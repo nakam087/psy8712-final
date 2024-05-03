@@ -16,3 +16,4 @@ This contains the codebook used for GSS 2018 data and the project writeup
 ### Shiny application link
 https://chiems.shinyapps.io/final_shinyapp/
 ### Binder link
+https://mybinder.org/v2/gh/nakam087/psy8712-final/HEAD
